@@ -1,4 +1,4 @@
-local version = "0.02 - 26. März 2017"
+local version = "V0.02 - 26. März 2017"
 
 local rgb = Color
 
@@ -14,7 +14,7 @@ if (SERVER) then
   util.AddNetworkString("hk_WarnChatText")
 
   hook.Add("Initialize", "init_hpKicker", function()
-    MsgC(rgb(22, 160, 133), "[HPKicker] Initalisiert!\n")
+    MsgC(rgb(22, 160, 133), "[HPKicker] Initalisiert! (" .. version .. ")\n")
   end)
 
   local pM = FindMetaTable("Player")
@@ -30,7 +30,7 @@ if (SERVER) then
 
     function pM:GivePingWarn()
       local curPing = self:Ping()
-    
+
       if !self.pingWarns then
         self.pingWarns = 0;
         self.totalWarns = 0;
@@ -48,7 +48,7 @@ if (SERVER) then
 
     function pM:SetPingWarn( s )
       if !s then s = 0 end
-    
+
       if !self.pingWarns then
         self.pingWarns = 0;
         self.totalWarns = 0;
@@ -133,142 +133,18 @@ else
     local bool = net.ReadBool()
     local warns = net.ReadInt(3)
     local pingZumZeitpunktDesWarns = net.ReadString() or "FEHLER"
-      
-    if !bool then
-      chat.AddText(rgb(231, 76, 60), "Dein Ping ist zu Hoch! Du hast nun "..warns.." Ping-Warn(s). (Ping: "..pingZumZeitpunktDesWarns..")")
-      --print("Dein Ping ist zu Hoch! Du hast nun "..int.." Ping-Warns. (Ping: "..tostring(LocalPlayer():Ping())..")")
-    else
-      chat.AddText(rgb(230, 126, 34), "Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..int.." weitere(n) Ping-Warns. (Ping: "..pingZumZeitpunktDesWarns..")")
-      --print("Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..int.." weitere(n) Ping-Warns. (Ping: "..tostring(LocalPlayer():Ping())..")")
-    end;
-  end)
-end;
-84
-      if (ping > PingGrenze) then
-85
-        v:GivePingWarn()
-86
-          print(v:Nick().." Warns + 1")
-87
-          --t[v:Nick()] = v:GetPingWarns();
-88
-      elseif (ping < ToleranzGrenze ) then
-89
-        v:TakePingWarn()
-90
-      end
-91
-    end;
-92
-  end)
-93
-​
-94
-  concommand.Add("hpkicker_totalwarns", function(pl, cmd, args)
-95
-    if !(#args > 0) then
-96
-      return print("Es wurde kein Spieler angegeben.")
-97
-    end;
-98
-    local target;
-99
-    for k, v in pairs(player.GetAll()) do
-100
-      if ( string.lower(v:Nick()) == string.lower(args[1]) ) then
-101
-        target = v;
-102
-      end;
-103
-    end;
-104
-​
-105
-    if !target then return print("Es wurde kein VALIDER Spieler angegeben") end
-106
-    if !target.totalWarns then target.totalWarns = 0; end
-107
-​
-108
-    print("Warns:", target.pingWarns)
-109
-    print("Total:", target.totalWarns)
-110
-  end)
-111
-​
-112
-  concommand.Add("hpkicker_setwarns", function(pl, cmd, args)
-113
-    if !(#args > 0) then
-114
-      return print("hpkicker_setwarns [Spieler] [Anzahl]")
-115
-    end;
-116
-​
-117
-    local target;
-118
-    for k, v in pairs(player.GetAll()) do
-119
-      if ( string.lower(v:Nick()) == string.lower(args[1]) ) then
-120
-        target = v;
-121
-      end;
-122
-    end;
-123
-​
-124
-    local amount = tonumber(args[2])
-125
-​
-126
-    if !target then return print("Es wurde kein VALIDER Spieler angegeben.") end
-127
-    if !amount then return print("Es wurde keine VALIDE Zahl angegeben.") end
-128
-​
-129
-    target:SetPingWarn( amount )
-130
-  end)
-131
-else
-132
-  net.Receive("hk_WarnChatText", function(len)
-133
-    local bool = net.ReadBool()
-134
-    local warns = net.ReadInt(3)
-135
-    local pingZumZeitpunktDesWarns = net.ReadString() or "FEHLER" 
-136
-      
-137
-    if !bool then
-138
-      chat.AddText(rgb(231, 76, 60), "Dein Ping ist zu Hoch! Du hast nun "..tostring(warns).." Ping-Warn(s). (Ping: "..pingZumZeitpunktDesWarns..")")
-139
-      --print("Dein Ping ist zu Hoch! Du hast nun "..int.." Ping-Warns. (Ping: "..tostring(LocalPlayer():Ping())..")")
-140
-    else
-141
-      chat.AddText(rgb(230, 126, 34), "Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..tostring(warns).." weitere(n) Ping-Warn(s). (Ping: "..pingZumZeitpunktDesWarns..")")
-142
-      --print("Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..int.." weitere(n) Ping-Warns. (Ping: "..tostring(LocalPlayer():Ping())..")")
-143
-    end;
-144
-  end)
-145
-end;
-146
-​
-@ColinLutter
 
-Commit changes
+    local msg, col
+    if !bool then
+      msg = "Dein Ping ist zu Hoch! Du hast nun "..tostring(warns).." Ping-Warn(s). (Ping: "..pingZumZeitpunktDesWarns..")"
+      col = rgb(231, 76, 60)
+
+    else
+      msg = "Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..tostring(warns).." weitere(n) Ping-Warns. (Ping: "..pingZumZeitpunktDesWarns..")"
+      col = rgb(230, 126, 34)
+    end;
+
+     chat.AddText(col, msg)
+     print(msg)
+  end)
+end;
