@@ -1,150 +1,106 @@
-local version = "V0.02 - 26. März 2017"
-
-local rgb = Color
+local version = "V1.0 - 30. März 2017"
 
 --CONFIG
-local PingGrenze = 200
-local ToleranzGrenze = 100
-local CheckIntervall = 25 -- In Sekunden
+local PingGrenze = 4
+local ToleranzGrenze = 0
+local CheckIntervall = 5 -- In Sekunden
 local MaxWarns = 4
 --CONFIG ENDE!
 
+local meta = FindMetaTable("Player")
+
+function meta:GetPingWarns()
+  return self.sloth_pingWarns or 0
+end
+
+
 if (SERVER) then
 
-  util.AddNetworkString("hk_WarnChatText")
+  util.AddNetworkString("hpk_sendChange_give")
+  util.AddNetworkString("hpk_sendChange_take")
 
   hook.Add("Initialize", "init_hpKicker", function()
-    MsgC(rgb(22, 160, 133), "[HPKicker] Initalisiert! (" .. version .. ")\n")
+    MsgC(Color(22, 160, 133), "[HPKicker] Initalisiert! (" .. version .. ")\n")
   end)
 
-  local pM = FindMetaTable("Player")
+  local function checkIfKick(pl)
+    if IsValid(pl) and pl:IsPlayer() then
 
-    function pM:GetPingWarns()
-      if !self.pingWarns then
-        self.pingWarns = 0;
-        self.totalWarns = 0;
-      end;
+      if pl:GetPingWarns() > MaxWarns then
+        pl:Kick( "High Ping Kick (Ping: "..ping..")" )
+      end
 
-      return self.pingWarns, self.totalWarns
-    end;
+    end
+  end
 
-    function pM:GivePingWarn()
-      local curPing = self:Ping()
+  function meta:GivePingWarn()
+    checkIfKick(self)
 
-      if !self.pingWarns then
-        self.pingWarns = 0;
-        self.totalWarns = 0;
-      end;
+    self.sloth_pingWarns = self:GetPingWarns() + 1
 
-      self.totalWarns = self.totalWarns + 1
-      self.pingWarns = self.pingWarns + 1
 
-      net.Start("hk_WarnChatText")
-        net.WriteBool(false)
-        net.WriteInt(self.pingWarns, 3)
-        net.WriteString(curPing)
-      net.Send(self)
-    end;
 
-    function pM:SetPingWarn( s )
-      if !s then s = 0 end
+    net.Start("hpk_sendChange_give")
+      net.WriteInt(self:Ping(), 32)
+      net.WriteInt(self:GetPingWarns(), 32)
+    net.Send(self)
+  end
 
-      if !self.pingWarns then
-        self.pingWarns = 0;
-        self.totalWarns = 0;
-      end;
+  function meta:TakePingWarn()
 
-      self.pingWarns = s
-    end;
+    if (self:GetPingWarns() == 0) then
+      return
+    end
 
-    function pM:TakePingWarn()
-      if !self.pingWarns then
-        self.pingWarns = 0;
-      end;
+    if (self:GetPingWarns() < 0) then
+      self.sloth_pingWarns = 0
+      return
+    end
 
-      if (self.pingWarns > 0) then
-        self.pingWarns = self.pingWarns - 1
-        net.Start("hk_WarnChatText")
-          net.WriteBool(true)
-          net.WriteInt(self.pingWarns, 3)
-        net.Send(self)
-      else
-        self.pingWarns = 0;
-      end;
-    end;
+    self.sloth_pingWarns = self:GetPingWarns() - 1
+    self.sloth_totalWarns = self:GetPingWarns() - 1
 
-  timer.Create("hpKicker_checkIntervall", CheckIntervall, 0, function()
+    net.Start("hpk_sendChange_take")
+      net.WriteInt(self:Ping(), 32)
+      net.WriteInt(self:GetPingWarns(), 32)
+    net.Send(self)
+  end
+
+  timer.Create("sloth_highpingkicker", CheckIntervall, 0, function()
     for k, v in pairs(player.GetAll()) do
       local ping = v:Ping()
 
-      if (v:GetPingWarns() > (MaxWarns - 1)) then
-        v:Kick( "High Ping Kick (PING: "..ping..")" )
-      end;
+      checkIfKick(v)
 
-      if (ping > PingGrenze) then
+      if ping > PingGrenze then
+        print("[HPKicker] " .. v:Nick() .. " wurde verwarnt. (Ping: " .. tostring(ping) .. ", Warns: " .. tostring(v:GetPingWarns() or 0) .. ")" )
         v:GivePingWarn()
-          print(v:Nick().." Warns + 1")
-          --t[v:Nick()] = v:GetPingWarns();
-      elseif (ping < ToleranzGrenze ) then
+        continue
+      end
+
+      if ping < ToleranzGrenze then
+        print("[HPKicker] " .. v:Nick() .. " wurde ein Warn erlassen. (Ping: " .. tostring(ping) .. ", Warns: " .. tostring(v:GetPingWarns()) .. ")" )
         v:TakePingWarn()
       end
-    end;
+    end
   end)
 
-  concommand.Add("hpkicker_totalwarns", function(pl, cmd, args)
-    if !(#args > 0) then
-      return print("Es wurde kein Spieler angegeben.")
-    end;
-    local target;
-    for k, v in pairs(player.GetAll()) do
-      if ( string.lower(v:Nick()) == string.lower(args[1]) ) then
-        target = v;
-      end;
-    end;
-
-    if !target then return print("Es wurde kein VALIDER Spieler angegeben") end
-    if !target.totalWarns then target.totalWarns = 0; end
-
-    print("Warns:", target.pingWarns)
-    print("Total:", target.totalWarns)
-  end)
-
-  concommand.Add("hpkicker_setwarns", function(pl, cmd, args)
-    if !(#args > 0) then
-      return print("hpkicker_setwarns [Spieler] [Anzahl]")
-    end;
-
-    local target;
-    for k, v in pairs(player.GetAll()) do
-      if ( string.lower(v:Nick()) == string.lower(args[1]) ) then
-        target = v;
-      end;
-    end;
-
-    local amount = tonumber(args[2])
-
-    if !target then return print("Es wurde kein VALIDER Spieler angegeben.") end
-    if !amount then return print("Es wurde keine VALIDE Zahl angegeben.") end
-
-    target:SetPingWarn( amount )
-  end)
 else
-  net.Receive("hk_WarnChatText", function(len)
-    local bool = net.ReadBool()
-    local warns = net.ReadInt(3)
-    local pingZumZeitpunktDesWarns = net.ReadString() or "FEHLER"
 
-    local msg, col
-    if !bool then
-      msg = "Dein Ping ist zu Hoch! Du hast nun "..tostring(warns).." Ping-Warn(s). (Ping: "..pingZumZeitpunktDesWarns..")"
-      col = rgb(231, 76, 60)
+  net.Receive("hpk_sendChange_give", function()
+    local ping = net.ReadInt(32)
+    local val = net.ReadInt(32)
 
-    else
-      msg = "Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..tostring(warns).." weitere(n) Ping-Warns. (Ping: "..pingZumZeitpunktDesWarns..")"
-      col = rgb(230, 126, 34)
-    end;
-
-     chat.AddText(col, msg)
-     print(msg)
+    LocalPlayer().sloth_pingWarns = val
+    chat.AddText(Color(231, 76, 60), "Dein Ping ist zu Hoch! Du hast nun "..tostring(val).." Ping-Warn(s). (Ping: "..tostring(ping)..")")
   end)
-end;
+
+  net.Receive("hpk_sendChange_take", function()
+    local ping = net.ReadInt(32)
+    local val = net.ReadInt(32)
+
+    LocalPlayer().sloth_pingWarns = val
+    chat.AddText(Color(230, 126, 34), "Da dein Ping wieder im grünen Bereich ist, wird dir ein Warn erlassen! Du hast noch "..tostring(val).." weitere(n) Ping-Warns. (Ping: "..tostring(ping)..")")
+  end)
+
+end
